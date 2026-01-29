@@ -7,7 +7,7 @@
 namespace coverbs_rpc {
 
 struct ConnConfig {
-  uint32_t cq_size = 2048;
+  uint32_t cq_size = 512;
   rdmapp::qp_config qp_config = rdmapp::default_qp_config();
 };
 
