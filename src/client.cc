@@ -69,7 +69,7 @@ struct Client::Impl {
         auto [nbytes, _] =
             co_await qp_->recv(recv_slice_mr, rdmapp::use_native_awaitable);
 
-        if (nbytes < sizeof(detail::RpcHeader)) {
+        if (nbytes < sizeof(detail::RpcHeader)) [[unlikely]] {
           get_logger()->warn("Client: received too small packet: {}", nbytes);
           continue;
         }
@@ -80,7 +80,7 @@ struct Client::Impl {
         uint64_t recv_id = header->req_id;
         uint32_t slot_idx = detail::parse_slot_idx(recv_id);
 
-        if (slot_idx >= config_.max_inflight) {
+        if (slot_idx >= config_.max_inflight) [[unlikely]] {
           get_logger()->error("Client: invalid slot_idx decoded: {}", slot_idx);
           continue;
         }
