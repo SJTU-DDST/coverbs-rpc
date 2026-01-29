@@ -27,6 +27,8 @@ struct RpcResponseAwaitable {
   auto await_resume() noexcept -> std::size_t { return slot.actual_len; }
 };
 
+static auto pause() noexcept -> void { __builtin_ia32_pause(); }
+
 } // namespace detail
 
 struct Client::Impl {
@@ -99,7 +101,7 @@ struct Client::Impl {
 
         uintptr_t w;
         while ((w = slot.waiter.load()) == detail::kWaiterEmpty) {
-          // spin
+          detail::pause();
         }
         auto h = std::coroutine_handle<>::from_address(reinterpret_cast<void *>(w));
         h.resume();
@@ -142,6 +144,7 @@ auto Client::call(uint32_t fn_id, std::span<const std::byte> req_data,
 
   uint32_t slot_idx;
   while (!impl_->free_slots_.try_dequeue(slot_idx)) {
+    detail::pause();
   }
 
   uint64_t seq = impl_->global_seq_.fetch_add(1);
