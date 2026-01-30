@@ -24,8 +24,9 @@ auto qp_connector::alloc_cq() noexcept -> std::shared_ptr<cq> {
 
 auto qp_connector::from_socket(cppcoro::net::socket &socket, std::span<std::byte const> userdata)
     -> cppcoro::task<std::shared_ptr<qp_t>> {
-  auto cq = alloc_cq();
-  auto qp_ptr = std::make_shared<qp_t>(this->pd_, cq, cq, srq_, config_.qp_config);
+  auto cq1 = alloc_cq();
+  auto cq2 = alloc_cq();
+  auto qp_ptr = std::make_shared<qp_t>(this->pd_, cq1, cq2, srq_, config_.qp_config);
   qp_ptr->user_data().assign(userdata.begin(), userdata.end());
   co_await send_qp(*qp_ptr, socket);
 

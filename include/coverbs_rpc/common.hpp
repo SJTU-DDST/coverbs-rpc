@@ -20,7 +20,6 @@ struct RpcConfig {
     ConnConfig cfg;
     cfg.qp_config.max_send_wr = max_inflight + 64;
     cfg.qp_config.max_recv_wr = max_inflight + 64;
-    cfg.cq_size = (max_inflight + 64) * 2;
     return cfg;
   }
 };

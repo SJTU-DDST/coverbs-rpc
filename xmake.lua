@@ -91,3 +91,11 @@ target("typed_rpc_mux_test_server")
 target("typed_rpc_mux_test_client")
     add_files("tests/typed_rpc_mux_test_client.cc")
     add_rules("test_config")
+
+target("typed_rpc_benchmark_client")
+    add_files("tests/typed_rpc_benchmark_client.cc")
+    add_rules("test_config")
+
+target("typed_rpc_benchmark_server")
+    add_files("tests/typed_rpc_benchmark_server.cc")
+    add_rules("test_config")
