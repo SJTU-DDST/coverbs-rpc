@@ -179,18 +179,4 @@ auto basic_client::call(uint32_t fn_id, std::span<const std::byte> req_data,
   co_return nbytes;
 }
 
-ClientMux::ClientMux(std::vector<std::shared_ptr<rdmapp::qp>> qps, RpcConfig config) {
-  for (auto &qp : qps) {
-    clients_.emplace_back(std::make_unique<basic_client>(qp, config));
-  }
-}
-
-ClientMux::~ClientMux() = default;
-
-auto ClientMux::call(uint32_t fn_id, std::span<const std::byte> req_data,
-                     std::span<std::byte> resp_buffer) -> cppcoro::task<std::size_t> {
-  return clients_[selector_.fetch_add(1, std::memory_order_relaxed) % clients_.size()]->call(
-      fn_id, req_data, resp_buffer);
-}
-
 } // namespace coverbs_rpc

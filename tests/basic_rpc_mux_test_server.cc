@@ -2,6 +2,7 @@
 #include "coverbs_rpc/common.hpp"
 #include "coverbs_rpc/conn/acceptor.hpp"
 #include "coverbs_rpc/logger.hpp"
+#include "coverbs_rpc/server_mux.hpp"
 
 #include <algorithm>
 #include <cppcoro/async_scope.hpp>
@@ -17,9 +18,9 @@ using namespace coverbs_rpc;
 using namespace coverbs_rpc::test;
 
 auto handle_rpc(std::shared_ptr<rdmapp::qp> qp) -> cppcoro::task<void> {
-  basic_server server(qp, kServerRpcConfig);
+  basic_mux mux;
   for (std::size_t i = 0; i < kNumHandlers; ++i) {
-    server.register_handler(
+    mux.register_handler(
         i, [i](std::span<std::byte> req, std::span<std::byte> resp) -> std::size_t {
           if (req.size() != kRequestSize) {
             get_logger()->error("Server: unexpected request size: {} for fn_id {}", req.size(), i);
@@ -42,7 +43,7 @@ auto handle_rpc(std::shared_ptr<rdmapp::qp> qp) -> cppcoro::task<void> {
           return kResponseSize;
         });
   }
-
+  basic_server server(qp, mux, kServerRpcConfig);
   co_await server.run();
 }
 
@@ -53,6 +54,7 @@ auto server_loop(qp_acceptor &acceptor) -> cppcoro::task<void> {
     get_logger()->info("Server: accepted connection");
     scope.spawn(handle_rpc(qp));
   }
+  co_await scope.join();
 }
 
 auto main(int argc, char *argv[]) -> int {

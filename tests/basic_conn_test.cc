@@ -37,6 +37,7 @@ cppcoro::task<void> server(coverbs_rpc::qp_acceptor &acceptor) {
     auto qp = co_await acceptor.accept();
     scope.spawn(handle_qp(qp));
   }
+  co_await scope.join();
   co_return;
 }
 

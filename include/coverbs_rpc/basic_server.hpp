@@ -1,38 +1,29 @@
 #pragma once
 
 #include "coverbs_rpc/common.hpp"
+#include "coverbs_rpc/server_mux.hpp"
 
 #include <cppcoro/static_thread_pool.hpp>
 #include <cppcoro/task.hpp>
 #include <cstdint>
-#include <functional>
-#include <map>
 #include <memory>
-#include <mutex>
 #include <rdmapp/mr.h>
 #include <rdmapp/qp.h>
-#include <span>
 #include <vector>
 
 namespace coverbs_rpc {
 
 class basic_server {
 public:
-  using Handler =
-      std::function<std::size_t(std::span<std::byte> payload, std::span<std::byte> resp)>;
-
-  basic_server(std::shared_ptr<rdmapp::qp> qp, RpcConfig config = {},
+  basic_server(std::shared_ptr<rdmapp::qp> qp, basic_mux const &mux, RpcConfig config = {},
                std::uint32_t thread_count = 4);
-
-  auto register_handler(uint32_t fn_id, Handler h) -> void;
 
   auto run() -> cppcoro::task<void>;
 
 private:
   auto server_worker(std::size_t idx) -> cppcoro::task<void>;
 
-  std::map<uint32_t, Handler> handlers_;
-  std::mutex handlers_mutex_;
+  basic_mux const &mux_;
   RpcConfig const config_;
   std::size_t const send_buffer_size_;
   std::size_t const recv_buffer_size_;

@@ -15,6 +15,19 @@ struct RpcConfig {
   std::size_t max_inflight = 128;
   std::size_t max_req_payload = 256;
   std::size_t max_resp_payload = 4096;
+
+  auto to_conn_config() const noexcept -> ConnConfig {
+    ConnConfig cfg;
+    cfg.qp_config.max_send_wr = max_inflight + 64;
+    cfg.qp_config.max_recv_wr = max_inflight + 64;
+    cfg.cq_size = (max_inflight + 64) * 2;
+    return cfg;
+  }
+};
+
+struct TypedRpcConfig : public RpcConfig {
+  uint32_t device_nr = 0;
+  uint32_t port_nr = 1;
 };
 
 namespace detail {

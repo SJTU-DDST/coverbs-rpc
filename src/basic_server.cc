@@ -1,14 +1,16 @@
 #include "coverbs_rpc/basic_server.hpp"
 #include "coverbs_rpc/logger.hpp"
 
+#include <cppcoro/async_scope.hpp>
 #include <cppcoro/when_all.hpp>
 #include <exception>
 
 namespace coverbs_rpc {
 
-basic_server::basic_server(std::shared_ptr<rdmapp::qp> qp, RpcConfig config,
+basic_server::basic_server(std::shared_ptr<rdmapp::qp> qp, const basic_mux &mux, RpcConfig config,
                            std::uint32_t thread_count)
-    : config_(config)
+    : mux_(mux)
+    , config_(config)
     , send_buffer_size_(config_.max_resp_payload + sizeof(detail::RpcHeader))
     , recv_buffer_size_(config_.max_req_payload + sizeof(detail::RpcHeader))
     , qp_(qp)
@@ -21,26 +23,12 @@ basic_server::basic_server(std::shared_ptr<rdmapp::qp> qp, RpcConfig config,
                      thread_count);
 }
 
-auto basic_server::register_handler(uint32_t fn_id, Handler h) -> void {
-  std::lock_guard<std::mutex> lock(handlers_mutex_);
-  bool ok = handlers_.find(fn_id) == handlers_.end();
-  assert(ok);
-  if (!ok) [[unlikely]] {
-    get_logger()->critical("Server: register the same handler");
-    std::terminate();
-  }
-  handlers_[fn_id] = std::move(h);
-}
-
 auto basic_server::run() -> cppcoro::task<void> {
-  std::vector<cppcoro::task<void>> workers;
-  workers.reserve(config_.max_inflight);
-
+  cppcoro::async_scope scope;
   for (std::size_t i = 0; i < config_.max_inflight; ++i) {
-    workers.emplace_back(server_worker(i));
+    scope.spawn(server_worker(i));
   }
-
-  co_await cppcoro::when_all(std::move(workers));
+  co_await scope.join();
 }
 
 auto basic_server::server_worker(std::size_t idx) -> cppcoro::task<void> {
@@ -69,13 +57,7 @@ auto basic_server::server_worker(std::size_t idx) -> cppcoro::task<void> {
         static_cast<std::byte *>(recv_mr.addr()) + sizeof(detail::RpcHeader), header->payload_len);
     auto *resp_header = reinterpret_cast<detail::RpcHeader *>(send_mr.addr());
 
-    std::size_t resp_payload_len = 0;
-    if (auto it = handlers_.find(header->fn_id); it != handlers_.end()) {
-      resp_payload_len = it->second(payload, resp_payload_span);
-    } else [[unlikely]] {
-      get_logger()->error("Server: handler not found for fn_id={}", header->fn_id);
-      continue;
-    }
+    std::size_t resp_payload_len = mux_.dispatch(header->fn_id, payload, resp_payload_span);
 
     resp_header->req_id = header->req_id;
     resp_header->payload_len = static_cast<uint32_t>(resp_payload_len);
