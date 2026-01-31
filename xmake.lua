@@ -1,50 +1,30 @@
 add_rules("mode.debug", "mode.check", "mode.release")
 
-package("rdmapp")
-    set_description("The rdmapp package")
-    add_deps("ibverbs", {system=true})
-    add_deps("pthread", {system=true})
-    add_deps("spdlog 1.16.0", {private=true, configs={header_only=true}})
-
-    add_versions("0.1.0", "53e1fc1b617c23cb9ee9c33d8d4a411ed7750f5f")
-
-    add_urls("https://github.com/SJTU-DDST/rdmapp.git")
-    on_install(function (package)
-        local configs = {}
-        if package:config("shared") then
-            configs.kind = "shared"
-        end
-        configs.pic = true
-        configs.nortti = false
-        configs.examples = false
-        configs.asio_coro = false
-        import("package.tools.xmake").install(package, configs)
-    end)
-package("cppcoro")
-    set_urls("https://github.com/andreasbuhr/cppcoro.git")
-    on_install("linux", function(package)
-        local configs = {}
-        import("package.tools.cmake").install(package, configs)
-    end)
-package_end()
-
 option("tests", {default = false, description = "Build tests programs"})
 
 set_languages("c++23", { public = true })
 set_warnings("all", "extra", "pedantic", "error", {private=true})
 
-add_requires("rdmapp 0.1.0")
-add_requires("cppcoro main")
+add_repositories("ddst-xrepo https://github.com/SJTU-DDST/xmake-repo.git")
+add_requires("rdmapp 0.1.0", {
+    public=true,
+    configs={examples=false, asio_coro=false, nortti=false, enable_pic=true}
+})
+add_requires("cppcoro-20", {public=true})
 add_requires("concurrentqueue 1.0.4", {private=true})
 add_requires("spdlog 1.16.0", {private=true, configs={header_only=true}})
 add_requires("glaze 7.0.0", {public=true})
 
-add_includedirs("include")
 
 target("coverbs-rpc")
+    add_headerfiles("include/(coverbs_rpc/**.hpp)")
+    add_includedirs("include", {public=true})
     set_kind("static")
+    if has_config("pic") then
+        add_cxxflags("-fpic")
+    end
     add_packages("rdmapp",  {public=true})
-    add_packages("cppcoro", {public=true})
+    add_packages("cppcoro-20", {public=true})
     add_packages("glaze", {public=true})
     add_packages("spdlog", {private=true})
     add_packages("concurrentqueue", {private=true})
