@@ -7,6 +7,7 @@
 #include <cppcoro/io_service.hpp>
 #include <cppcoro/task.hpp>
 #include <exception>
+#include <glaze/beve/read.hpp>
 #include <glaze/glaze.hpp>
 #include <memory>
 #include <stdexcept>
@@ -50,7 +51,7 @@ private:
     auto h = [inv = std::move(invoker)](std::span<std::byte> req_bytes,
                                         std::span<std::byte> resp_bytes) -> std::size_t {
       Req req{};
-      auto err = glz::read_beve(req, req_bytes);
+      auto err = glz::read_beve_untagged(req, req_bytes);
       if (err) [[unlikely]] {
         throw std::runtime_error("typed_server: failed to deserialize request");
       }
@@ -65,7 +66,7 @@ private:
         resp = inv(req);
       }
 
-      auto ec = glz::write_beve(resp, resp_bytes);
+      auto ec = glz::write_beve_untagged(resp, resp_bytes);
       if (ec) [[unlikely]] {
         throw std::runtime_error("typed_server: failed to serialize response");
       }

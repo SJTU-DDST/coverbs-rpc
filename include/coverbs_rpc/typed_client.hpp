@@ -26,7 +26,7 @@ public:
     constexpr uint32_t fn_id = detail::function_id<Handler>;
 
     std::vector<std::byte> send_buffer(config_.max_req_payload);
-    auto ec = glz::write_beve(req, send_buffer);
+    auto ec = glz::write_beve_untagged(req, send_buffer);
     if (ec) [[unlikely]] {
       throw std::runtime_error("typed_client: failed to serialize request");
     }
@@ -37,7 +37,7 @@ public:
         co_await client_->call(fn_id, std::span{send_buffer.data(), req_size}, recv_buffer);
 
     Resp resp{};
-    auto err = glz::read_beve(resp, std::span{recv_buffer.data(), resp_size});
+    auto err = glz::read_beve_untagged(resp, std::span{recv_buffer.data(), resp_size});
     if (err) [[unlikely]] {
       throw std::runtime_error("typed_client: failed to deserialize response");
     }
