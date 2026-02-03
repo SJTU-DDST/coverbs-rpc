@@ -4,6 +4,7 @@
 #include <concurrentqueue.h>
 #include <cppcoro/async_scope.hpp>
 #include <cppcoro/sync_wait.hpp>
+#include <format>
 #include <memory>
 #include <rdmapp/qp.h>
 
@@ -139,8 +140,9 @@ basic_client::~basic_client() = default;
 
 auto basic_client::call(uint32_t fn_id, std::span<const std::byte> req_data,
                         std::span<std::byte> resp_buffer) -> cppcoro::task<std::size_t> {
-  if (req_data.size() > impl_->config_.max_req_payload) {
-    throw std::runtime_error("request payload too large");
+  if (req_data.size() > impl_->config_.max_req_payload) [[unlikely]] {
+    throw std::runtime_error(std::format("request payload too large: max={} req={}",
+                                         impl_->config_.max_req_payload, req_data.size()));
   }
 
   uint32_t slot_idx;
