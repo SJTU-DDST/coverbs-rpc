@@ -2,16 +2,16 @@
 
 #include "coverbs_rpc/common.hpp"
 #include "coverbs_rpc/conn/transmission.hpp"
+#include "coverbs_rpc/detail/cq_provider.hpp"
 
 #include <cppcoro/net/socket.hpp>
 #include <cppcoro/task.hpp>
 #include <cstdint>
-#include <list>
 #include <memory>
 #include <rdmapp/cq.h>
-#include <rdmapp/cq_poller.h>
 #include <rdmapp/pd.h>
 #include <rdmapp/qp.h>
+#include <rdmapp/scheduler.h>
 
 namespace cppcoro {
 class io_service;
@@ -23,10 +23,10 @@ struct qp_connector {
   using cq = rdmapp::cq;
   using srq = rdmapp::srq;
   using qp_t = rdmapp::basic_qp;
-  using cq_poller_t = rdmapp::native_cq_poller;
 
-  qp_connector(cppcoro::io_service &io_service, std::shared_ptr<pd> pd,
-               std::shared_ptr<srq> srq = nullptr, ConnConfig config = {});
+  qp_connector(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
+               std::shared_ptr<pd> pd, std::shared_ptr<srq> srq = nullptr,
+               ConnConfig config = {});
 
   auto connect(std::string_view hostname, uint16_t port, std::span<const std::byte> userdata = {})
       -> cppcoro::task<std::shared_ptr<qp_t>>;
@@ -42,7 +42,7 @@ private:
 
   std::shared_ptr<pd> pd_;
   std::shared_ptr<srq> srq_;
-  std::list<cq_poller_t> pollers_;
+  detail::cq_provider cq_provider_;
   cppcoro::io_service &io_service_;
   ConnConfig const config_;
 };

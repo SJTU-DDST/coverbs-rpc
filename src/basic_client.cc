@@ -13,6 +13,8 @@ using detail::get_logger;
 
 namespace detail {
 
+constexpr uintptr_t kWaiterReady = 1;
+
 struct RpcSlot {
   std::atomic<uintptr_t> waiter{kWaiterEmpty};
   std::span<std::byte> user_resp_buffer{};
@@ -22,9 +24,14 @@ struct RpcSlot {
 
 struct RpcResponseAwaitable {
   RpcSlot &slot;
-  constexpr auto await_ready() const noexcept -> bool { return false; }
-  void await_suspend(std::coroutine_handle<> h) noexcept {
-    slot.waiter.store(uintptr_t(h.address()));
+  auto await_ready() const noexcept -> bool {
+    return slot.waiter.load(std::memory_order_acquire) == kWaiterReady;
+  }
+  auto await_suspend(std::coroutine_handle<> h) noexcept -> bool {
+    uintptr_t expected = kWaiterEmpty;
+    return slot.waiter.compare_exchange_strong(expected, uintptr_t(h.address()),
+                                               std::memory_order_release,
+                                               std::memory_order_acquire);
   }
   auto await_resume() noexcept -> std::size_t { return slot.actual_len; }
 };
@@ -101,12 +108,14 @@ struct basic_client::Impl {
 
         slot.actual_len = copy_len;
 
-        uintptr_t w;
-        while ((w = slot.waiter.load()) == detail::kWaiterEmpty) {
-          detail::pause();
+        // A response may beat waiter registration once send/recv completions
+        // are funneled through the same scheduler thread.
+        uintptr_t waiter =
+            slot.waiter.exchange(detail::kWaiterReady, std::memory_order_acq_rel);
+        if (waiter > detail::kWaiterReady) {
+          auto h = std::coroutine_handle<>::from_address(reinterpret_cast<void *>(waiter));
+          h.resume();
         }
-        auto h = std::coroutine_handle<>::from_address(reinterpret_cast<void *>(w));
-        h.resume();
 
       } catch (const std::exception &e) {
         get_logger()->error("Client: recv worker error: {}", e.what());

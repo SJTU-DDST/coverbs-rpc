@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "rpc_mux_test.hpp"
+#include "runtime.hpp"
 
 using namespace coverbs_rpc;
 using namespace coverbs_rpc::test;
@@ -76,9 +77,11 @@ auto base_test(basic_client &client) -> void {
                      total_calls, total_elapsed, total_elapsed / (double)total_calls);
 }
 
-cppcoro::task<void> run_test(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::pd> pd) {
+cppcoro::task<void> run_test(cppcoro::io_service &io_service,
+                             std::shared_ptr<rdmapp::scheduler> scheduler,
+                             std::shared_ptr<rdmapp::pd> pd) {
   get_logger()->info("Running serial base test...");
-  qp_connector connector(io_service, pd, nullptr,
+  qp_connector connector(io_service, std::move(scheduler), pd, nullptr,
                          ConnConfig{.cq_size = kClientMaxInFlight * 2,
                                     .qp_config{.max_send_wr = kClientMaxInFlight * 2,
                                                .max_recv_wr = kClientMaxInFlight * 2}});
@@ -115,17 +118,16 @@ int main(int argc, char **argv) {
 
   auto device = std::make_shared<rdmapp::device>(0, 1);
   auto pd = std::make_shared<rdmapp::pd>(device);
-  cppcoro::io_service io_service;
-  std::jthread looper([&io_service]() { io_service.process_events(); });
+  coverbs_rpc::test::runtime runtime;
 
   try {
-    cppcoro::sync_wait(run_test(io_service, pd));
+    cppcoro::sync_wait(run_test(runtime.io_service, runtime.scheduler, pd));
   } catch (const std::exception &e) {
     get_logger()->error("Exception: {}", e.what());
-    io_service.stop();
+    runtime.stop();
     return 1;
   }
 
-  io_service.stop();
+  runtime.stop();
   return 0;
 }

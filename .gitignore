@@ -9,3 +9,6 @@ build/
 .DS_Store
 
 
+.codex
+AGENTS.md
+compile_commands.json

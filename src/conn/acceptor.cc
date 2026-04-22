@@ -21,11 +21,21 @@ static auto config_socket(cppcoro::net::socket &socket) {
   }
 }
 
-qp_acceptor::qp_acceptor(cppcoro::io_service &io_service, uint16_t port, std::shared_ptr<pd> pd,
-                         std::shared_ptr<srq> srq, ConnConfig config)
+static auto require_scheduler(std::shared_ptr<rdmapp::scheduler> scheduler)
+    -> std::shared_ptr<rdmapp::scheduler> {
+  if (!scheduler) {
+    throw std::invalid_argument("qp_acceptor: scheduler must not be null");
+  }
+  return scheduler;
+}
+
+qp_acceptor::qp_acceptor(cppcoro::io_service &io_service,
+                         std::shared_ptr<rdmapp::scheduler> scheduler, uint16_t port,
+                         std::shared_ptr<pd> pd, std::shared_ptr<srq> srq, ConnConfig config)
     : acceptor_socket_(cppcoro::net::socket::create_tcpv4(io_service))
     , pd_(pd)
     , srq_(srq)
+    , cq_provider_(pd_->device_ptr(), require_scheduler(std::move(scheduler)))
     , port_(port)
     , io_service_(io_service)
     , config_(std::move(config)) {
@@ -79,9 +89,7 @@ auto qp_acceptor::accept_multiple(qp_handshake &handshake)
 }
 
 auto qp_acceptor::alloc_cq() -> std::shared_ptr<rdmapp::cq> {
-  auto cq = std::make_shared<rdmapp::cq>(pd_->device_ptr(), config_.cq_size);
-  pollers_.emplace_back(cq);
-  return cq;
+  return cq_provider_.alloc(config_.cq_size);
 }
 
 auto qp_acceptor::close() noexcept -> void {

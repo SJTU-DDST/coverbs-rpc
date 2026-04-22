@@ -66,10 +66,15 @@ auto echo(const EchoReq &req) -> EchoResp {
 #include <coverbs_rpc/typed_server.hpp>
 #include <cppcoro/io_service.hpp>
 #include <cppcoro/sync_wait.hpp>
+#include <memory>
+#include <rdmapp/scheduler.h>
+#include <thread>
 
-cppcoro::task<void> run_server(cppcoro::io_service &io_service, uint16_t port) {
+cppcoro::task<void> run_server(cppcoro::io_service &io_service,
+                               std::shared_ptr<rdmapp::scheduler> scheduler,
+                               uint16_t port) {
     coverbs_rpc::TypedRpcConfig config;
-    coverbs_rpc::typed_server server(io_service, port, config);
+    coverbs_rpc::typed_server server(io_service, std::move(scheduler), port, config);
     
     // Register the handler
     server.register_handler<echo>();
@@ -79,8 +84,12 @@ cppcoro::task<void> run_server(cppcoro::io_service &io_service, uint16_t port) {
 
 int main() {
     cppcoro::io_service io_service;
-    // ... start io_service event loop ...
-    cppcoro::sync_wait(run_server(io_service, 12345));
+    auto scheduler = std::make_shared<rdmapp::basic_scheduler>();
+    std::jthread io_worker([&io_service]() { io_service.process_events(); });
+    std::jthread scheduler_worker([scheduler]() { scheduler->run(); });
+    cppcoro::sync_wait(run_server(io_service, scheduler, 12345));
+    io_service.stop();
+    scheduler->stop();
     return 0;
 }
 ```
@@ -89,9 +98,13 @@ int main() {
 
 ```cpp
 #include "coverbs_rpc/typed_client.hpp"
+#include <memory>
+#include <rdmapp/scheduler.h>
 
-cppcoro::task<void> run_client(cppcoro::io_service &io_service, std::string hostname, uint16_t port) {
-    coverbs_rpc::typed_client client(io_service, hostname, port);
+cppcoro::task<void> run_client(cppcoro::io_service &io_service,
+                               std::shared_ptr<rdmapp::scheduler> scheduler,
+                               std::string hostname, uint16_t port) {
+    coverbs_rpc::typed_client client(io_service, std::move(scheduler), hostname, port);
     
     EchoReq req{.msg = "Hello coverbs-rpc!"};
     

@@ -6,6 +6,7 @@
 #include <numeric>
 #include <thread>
 
+#include "runtime.hpp"
 #include "typed_rpc_test.hpp"
 
 using namespace coverbs_rpc;
@@ -46,10 +47,9 @@ int main(int argc, char *argv[]) {
 
   uint16_t port = static_cast<uint16_t>(std::stoi(argv[1]));
 
-  cppcoro::io_service io_service;
-  auto looper = std::jthread([&io_service]() { io_service.process_events(); });
+  coverbs_rpc::test::runtime runtime;
 
-  typed_server server(io_service, port, kServerRpcConfig);
+  typed_server server(runtime.io_service, runtime.scheduler, port, kServerRpcConfig);
   register_handlers(server, std::make_index_sequence<kNumHandlers>{});
 
   get_logger()->info("Typed RPC Mux Server listening on port {}", port);

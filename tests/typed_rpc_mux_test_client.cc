@@ -9,6 +9,7 @@
 #include <thread>
 #include <vector>
 
+#include "runtime.hpp"
 #include "typed_rpc_test.hpp"
 
 using namespace coverbs_rpc;
@@ -83,9 +84,10 @@ auto run_all_tests(typed_client &client, std::index_sequence<Is...>) -> void {
   (base_test<Is>(client), ...);
 }
 
-cppcoro::task<void> run_test(cppcoro::io_service &io_service) {
+cppcoro::task<void> run_test(cppcoro::io_service &io_service,
+                             std::shared_ptr<rdmapp::scheduler> scheduler) {
   get_logger()->info("Connecting to {}:{}", server_ip, server_port);
-  typed_client client(io_service, server_ip, server_port, kClientRpcConfig);
+  typed_client client(io_service, std::move(scheduler), server_ip, server_port, kClientRpcConfig);
 
   get_logger()->info("Running serial tests...");
   run_all_tests(client, std::make_index_sequence<kNumHandlers>{});
@@ -118,15 +120,16 @@ int main(int argc, char **argv) {
     server_port = static_cast<uint16_t>(std::stoi(argv[2]));
   }
 
-  cppcoro::io_service io_service;
-  auto looper = std::jthread([&io_service]() { io_service.process_events(); });
+  coverbs_rpc::test::runtime runtime;
 
   try {
-    cppcoro::sync_wait(run_test(io_service));
+    cppcoro::sync_wait(run_test(runtime.io_service, runtime.scheduler));
   } catch (const std::exception &e) {
     get_logger()->error("Exception: {}", e.what());
+    runtime.stop();
     return 1;
   }
 
+  runtime.stop();
   return 0;
 }

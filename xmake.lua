@@ -6,9 +6,9 @@ set_languages("c++23", { public = true })
 set_warnings("all", "extra", "pedantic", "error", {private=true})
 
 add_repositories("ddst-xrepo https://github.com/SJTU-DDST/xmake-repo.git")
-add_requires("rdmapp 0.1.1", {
+add_requires("rdmapp dev", {
     public=true,
-    configs={examples=false, asio_coro=false, nortti=false, enable_pic=true}
+    configs={examples=false, nortti=false, enable_pic=true}
 })
 add_requires("cppcoro-20", {public=true})
 add_requires("concurrentqueue 1.0.4", {private=true})

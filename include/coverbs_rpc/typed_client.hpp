@@ -15,8 +15,8 @@ namespace coverbs_rpc {
 
 class typed_client {
 public:
-  typed_client(cppcoro::io_service &io_service, std::string_view hostname, uint16_t port,
-               TypedRpcConfig config = {});
+  typed_client(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
+               std::string_view hostname, uint16_t port, TypedRpcConfig config = {});
 
   template <auto Handler>
   auto call(auto &&req) -> cppcoro::task<detail::rpc_resp_t<Handler>> {

@@ -9,6 +9,7 @@
 #include <thread>
 #include <vector>
 
+#include "runtime.hpp"
 #include "typed_rpc_benchmark.hpp"
 
 using namespace coverbs_rpc;
@@ -63,8 +64,7 @@ int main(int argc, char **argv) {
   if (argc >= 3)
     server_port = static_cast<uint16_t>(std::stoi(argv[2]));
 
-  cppcoro::io_service io_service;
-  auto looper = std::jthread([&io_service]() { io_service.process_events(); });
+  coverbs_rpc::test::runtime runtime;
 
   TypedRpcConfig config;
   config.max_inflight = 512;
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
   config.max_resp_payload = 8192;
 
   try {
-    typed_client client(io_service, server_ip, server_port, config);
+    typed_client client(runtime.io_service, runtime.scheduler, server_ip, server_port, config);
 
     get_logger()->info("Starting benchmarks...");
 
@@ -86,8 +86,10 @@ int main(int argc, char **argv) {
     get_logger()->info("Done.");
   } catch (const std::exception &e) {
     get_logger()->error("Exception: {}", e.what());
+    runtime.stop();
     return 1;
   }
 
+  runtime.stop();
   return 0;
 }

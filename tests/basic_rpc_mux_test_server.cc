@@ -13,6 +13,7 @@
 #include <thread>
 
 #include "rpc_mux_test.hpp"
+#include "runtime.hpp"
 
 using namespace coverbs_rpc;
 using namespace coverbs_rpc::test;
@@ -67,11 +68,10 @@ auto main(int argc, char *argv[]) -> int {
 
   auto device = std::make_shared<rdmapp::device>(0, 1);
   auto pd = std::make_shared<rdmapp::pd>(device);
-  cppcoro::io_service io_service;
-  auto looper = std::jthread([&io_service]() { io_service.process_events(); });
+  coverbs_rpc::test::runtime runtime;
 
   qp_acceptor acceptor(
-      io_service, std::stoi(argv[1]), pd, nullptr,
+      runtime.io_service, runtime.scheduler, std::stoi(argv[1]), pd, nullptr,
       ConnConfig{.qp_config{.max_send_wr = kServerMaxInFlight, .max_recv_wr = kServerMaxInFlight}});
   get_logger()->info("Server: listening on port {}", argv[1]);
   cppcoro::sync_wait(server_loop(acceptor));

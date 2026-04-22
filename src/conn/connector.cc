@@ -11,17 +11,25 @@ namespace coverbs_rpc {
 
 using detail::get_logger;
 
-qp_connector::qp_connector(cppcoro::io_service &io_service, std::shared_ptr<pd> pd,
+static auto require_scheduler(std::shared_ptr<rdmapp::scheduler> scheduler)
+    -> std::shared_ptr<rdmapp::scheduler> {
+  if (!scheduler) {
+    throw std::invalid_argument("qp_connector: scheduler must not be null");
+  }
+  return scheduler;
+}
+
+qp_connector::qp_connector(cppcoro::io_service &io_service,
+                           std::shared_ptr<rdmapp::scheduler> scheduler, std::shared_ptr<pd> pd,
                            std::shared_ptr<srq> srq, ConnConfig config)
     : pd_(pd)
     , srq_(srq)
+    , cq_provider_(pd_->device_ptr(), require_scheduler(std::move(scheduler)))
     , io_service_(io_service)
     , config_(std::move(config)) {}
 
 auto qp_connector::alloc_cq() noexcept -> std::shared_ptr<cq> {
-  auto cq = std::make_shared<rdmapp::cq>(this->pd_->device_ptr(), config_.cq_size);
-  pollers_.emplace_back(cq);
-  return cq;
+  return cq_provider_.alloc(config_.cq_size);
 }
 
 auto qp_connector::from_socket(cppcoro::net::socket &socket, std::span<std::byte const> userdata)
