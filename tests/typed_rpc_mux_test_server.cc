@@ -1,4 +1,5 @@
 #include "coverbs_rpc/detail/logger.hpp"
+#include "coverbs_rpc/runtime.hpp"
 #include "coverbs_rpc/typed_server.hpp"
 
 #include <cppcoro/io_service.hpp>
@@ -6,7 +7,6 @@
 #include <numeric>
 #include <thread>
 
-#include "runtime.hpp"
 #include "typed_rpc_test.hpp"
 
 using namespace coverbs_rpc;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 
   uint16_t port = static_cast<uint16_t>(std::stoi(argv[1]));
 
-  coverbs_rpc::test::runtime runtime;
+  coverbs_rpc::runtime runtime;
 
   typed_server server(runtime.io_service, runtime.scheduler, port, kServerRpcConfig);
   register_handlers(server, std::make_index_sequence<kNumHandlers>{});

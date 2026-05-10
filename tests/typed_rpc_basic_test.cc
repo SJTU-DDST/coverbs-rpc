@@ -1,12 +1,11 @@
 #include "coverbs_rpc/detail/logger.hpp"
+#include "coverbs_rpc/runtime.hpp"
 #include "coverbs_rpc/typed_client.hpp"
 #include "coverbs_rpc/typed_server.hpp"
 
 #include <cppcoro/sync_wait.hpp>
 #include <cppcoro/task.hpp>
 #include <thread>
-
-#include "runtime.hpp"
 
 namespace coverbs_rpc {
 using detail::get_logger;
@@ -52,11 +51,11 @@ auto main(int argc, char *argv[]) -> int {
   config.max_req_payload = 1024;
   config.max_resp_payload = 1024;
 
-  coverbs_rpc::test::runtime runtime;
+  coverbs_rpc::runtime runtime;
 
   if (argc == 2) {
-    cppcoro::sync_wait(run_server(runtime.io_service, std::stoi(argv[1]), runtime.scheduler,
-                                  config));
+    cppcoro::sync_wait(
+        run_server(runtime.io_service, std::stoi(argv[1]), runtime.scheduler, config));
   } else if (argc == 3) {
     cppcoro::sync_wait(
         run_client(runtime.io_service, argv[1], std::stoi(argv[2]), runtime.scheduler, config));

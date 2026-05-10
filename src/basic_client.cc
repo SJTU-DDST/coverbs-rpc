@@ -7,6 +7,7 @@
 #include <format>
 #include <memory>
 #include <rdmapp/qp.h>
+#include <thread>
 
 namespace coverbs_rpc {
 using detail::get_logger;
@@ -29,9 +30,8 @@ struct RpcResponseAwaitable {
   }
   auto await_suspend(std::coroutine_handle<> h) noexcept -> bool {
     uintptr_t expected = kWaiterEmpty;
-    return slot.waiter.compare_exchange_strong(expected, uintptr_t(h.address()),
-                                               std::memory_order_release,
-                                               std::memory_order_acquire);
+    return slot.waiter.compare_exchange_strong(
+        expected, uintptr_t(h.address()), std::memory_order_release, std::memory_order_acquire);
   }
   auto await_resume() noexcept -> std::size_t { return slot.actual_len; }
 };
@@ -52,7 +52,7 @@ struct basic_client::Impl {
       , recv_mr_(qp->pd_ptr()->reg_mr(recv_buffer_pool_.data(), recv_buffer_pool_.size()))
       , slots_(config_.max_inflight)
       , free_slots_(config_.max_inflight * 2)
-      , worker_(&basic_client::Impl::start_recv_workers, this) {
+      , recv_loop_thread_(&basic_client::Impl::run_recv_workers, this) {
     for (uint32_t i = 0; i < config_.max_inflight; ++i) {
       free_slots_.enqueue(i);
     }
@@ -61,7 +61,7 @@ struct basic_client::Impl {
                        config_.max_inflight, send_buffer_size_, recv_buffer_size_);
   }
 
-  void start_recv_workers() {
+  void run_recv_workers() {
     cppcoro::async_scope scope;
     for (std::size_t i = 0; i < config_.max_inflight; ++i) {
       scope.spawn(recv_worker(i));
@@ -110,8 +110,7 @@ struct basic_client::Impl {
 
         // A response may beat waiter registration once send/recv completions
         // are funneled through the same scheduler thread.
-        uintptr_t waiter =
-            slot.waiter.exchange(detail::kWaiterReady, std::memory_order_acq_rel);
+        uintptr_t waiter = slot.waiter.exchange(detail::kWaiterReady, std::memory_order_acq_rel);
         if (waiter > detail::kWaiterReady) {
           auto h = std::coroutine_handle<>::from_address(reinterpret_cast<void *>(waiter));
           h.resume();
@@ -139,7 +138,7 @@ struct basic_client::Impl {
   moodycamel::ConcurrentQueue<uint32_t> free_slots_;
 
   std::atomic<uint64_t> global_seq_{0};
-  std::jthread worker_;
+  std::jthread recv_loop_thread_;
 };
 
 basic_client::basic_client(std::shared_ptr<rdmapp::qp> qp, RpcConfig config)

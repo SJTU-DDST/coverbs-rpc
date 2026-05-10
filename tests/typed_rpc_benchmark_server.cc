@@ -1,11 +1,11 @@
 #include "coverbs_rpc/detail/logger.hpp"
+#include "coverbs_rpc/runtime.hpp"
 #include "coverbs_rpc/typed_server.hpp"
 
 #include <cppcoro/io_service.hpp>
 #include <cppcoro/sync_wait.hpp>
 #include <thread>
 
-#include "runtime.hpp"
 #include "typed_rpc_benchmark.hpp"
 
 using namespace coverbs_rpc;
@@ -19,14 +19,14 @@ int main(int argc, char *argv[]) {
 
   uint16_t port = static_cast<uint16_t>(std::stoi(argv[1]));
 
-  coverbs_rpc::test::runtime runtime;
+  coverbs_rpc::runtime runtime(4);
 
   TypedRpcConfig config;
   config.max_inflight = 1024;
   config.max_req_payload = 8192;
   config.max_resp_payload = 8192;
 
-  typed_server server(runtime.io_service, runtime.scheduler, port, config, 4);
+  typed_server server(runtime.io_service, runtime.scheduler, port, config);
   server.register_handler<benchmark::BenchmarkHandler<0>::handle>();
   server.register_handler<benchmark::BenchmarkHandler<1>::handle>();
 

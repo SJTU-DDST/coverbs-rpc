@@ -9,9 +9,8 @@ using detail::get_logger;
 
 typed_server::typed_server(cppcoro::io_service &io_service,
                            std::shared_ptr<rdmapp::scheduler> scheduler, uint16_t port,
-                           TypedRpcConfig config, std::uint32_t thread_count)
+                           TypedRpcConfig config)
     : config_(config)
-    , thread_count_(thread_count)
     , device_(std::make_shared<rdmapp::device>(config.device_nr, config.port_nr))
     , pd_(std::make_shared<rdmapp::pd>(device_))
     , io_service_(io_service)
@@ -31,7 +30,7 @@ auto typed_server::run() -> cppcoro::task<void> {
 typed_server::~typed_server() { acceptor_.close(); }
 
 auto typed_server::handle_connection(std::shared_ptr<rdmapp::qp> qp) -> cppcoro::task<void> {
-  basic_server server(qp, mux_, config_, thread_count_);
+  basic_server server(qp, mux_, config_);
   try {
     co_await server.run();
   } catch (const std::exception &e) {

@@ -2,6 +2,7 @@
 #include "coverbs_rpc/common.hpp"
 #include "coverbs_rpc/conn/connector.hpp"
 #include "coverbs_rpc/detail/logger.hpp"
+#include "coverbs_rpc/runtime.hpp"
 
 #include <cppcoro/io_service.hpp>
 #include <cppcoro/sync_wait.hpp>
@@ -13,7 +14,6 @@
 #include <vector>
 
 #include "basic_rpc_test.hpp"
-#include "runtime.hpp"
 
 using namespace coverbs_rpc;
 using namespace coverbs_rpc::test;
@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 
   auto device = std::make_shared<rdmapp::device>(0, 1);
   auto pd = std::make_shared<rdmapp::pd>(device);
-  coverbs_rpc::test::runtime runtime;
+  coverbs_rpc::runtime runtime;
 
   try {
     cppcoro::sync_wait(run_test(runtime.io_service, runtime.scheduler, pd));

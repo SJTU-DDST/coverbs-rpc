@@ -1,4 +1,5 @@
 #include "coverbs_rpc/detail/logger.hpp"
+#include "coverbs_rpc/runtime.hpp"
 #include "coverbs_rpc/typed_client.hpp"
 
 #include <chrono>
@@ -9,7 +10,6 @@
 #include <thread>
 #include <vector>
 
-#include "runtime.hpp"
 #include "typed_rpc_test.hpp"
 
 using namespace coverbs_rpc;
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
     server_port = static_cast<uint16_t>(std::stoi(argv[2]));
   }
 
-  coverbs_rpc::test::runtime runtime;
+  coverbs_rpc::runtime runtime;
 
   try {
     cppcoro::sync_wait(run_test(runtime.io_service, runtime.scheduler));

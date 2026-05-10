@@ -8,20 +8,17 @@
 namespace coverbs_rpc {
 using detail::get_logger;
 
-basic_server::basic_server(std::shared_ptr<rdmapp::qp> qp, const basic_mux &mux, RpcConfig config,
-                           std::uint32_t thread_count)
+basic_server::basic_server(std::shared_ptr<rdmapp::qp> qp, const basic_mux &mux, RpcConfig config)
     : mux_(mux)
     , config_(config)
     , send_buffer_size_(config_.max_resp_payload + sizeof(detail::RpcHeader))
     , recv_buffer_size_(config_.max_req_payload + sizeof(detail::RpcHeader))
     , qp_(qp)
-    , tp_(thread_count)
     , recv_buffer_pool_(config_.max_inflight * recv_buffer_size_)
     , recv_mr_(qp->pd_ptr()->reg_mr(recv_buffer_pool_.data(), recv_buffer_pool_.size()))
     , send_buffer_pool_(config_.max_inflight * send_buffer_size_)
     , send_mr_(qp->pd_ptr()->reg_mr(send_buffer_pool_.data(), send_buffer_pool_.size())) {
-  get_logger()->info("Server initialized with {} slots, thread_count={}", config_.max_inflight,
-                     thread_count);
+  get_logger()->info("Server initialized with {} slots", config_.max_inflight);
 }
 
 auto basic_server::run() -> cppcoro::task<void> {
@@ -50,8 +47,6 @@ auto basic_server::server_worker(std::size_t idx) -> cppcoro::task<void> {
       get_logger()->warn("Server: received too small packet: {}", nbytes);
       continue;
     }
-
-    co_await tp_.schedule();
 
     auto *header = reinterpret_cast<detail::RpcHeader *>(recv_mr.addr());
     auto payload = std::span<std::byte>(

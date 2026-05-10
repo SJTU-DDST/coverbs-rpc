@@ -1,4 +1,5 @@
 #include "coverbs_rpc/detail/logger.hpp"
+#include "coverbs_rpc/runtime.hpp"
 #include "coverbs_rpc/typed_client.hpp"
 #include "coverbs_rpc/utils/spin_wait.hpp"
 
@@ -9,7 +10,6 @@
 #include <thread>
 #include <vector>
 
-#include "runtime.hpp"
 #include "typed_rpc_benchmark.hpp"
 
 using namespace coverbs_rpc;
@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
   if (argc >= 3)
     server_port = static_cast<uint16_t>(std::stoi(argv[2]));
 
-  coverbs_rpc::test::runtime runtime;
+  coverbs_rpc::runtime runtime;
 
   TypedRpcConfig config;
   config.max_inflight = 512;

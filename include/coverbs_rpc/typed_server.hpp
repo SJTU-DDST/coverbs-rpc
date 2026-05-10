@@ -17,7 +17,7 @@ namespace coverbs_rpc {
 class typed_server {
 public:
   typed_server(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
-               uint16_t port, TypedRpcConfig config = {}, std::uint32_t thread_count = 4);
+               uint16_t port, TypedRpcConfig config = {});
 
   template <auto Handler>
   auto register_handler() -> void {
@@ -79,7 +79,6 @@ private:
   auto handle_connection(std::shared_ptr<rdmapp::qp> qp) -> cppcoro::task<void>;
 
   TypedRpcConfig const config_;
-  uint32_t const thread_count_;
   std::shared_ptr<rdmapp::device> device_;
   std::shared_ptr<rdmapp::pd> pd_;
   cppcoro::io_service &io_service_;

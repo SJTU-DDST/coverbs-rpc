@@ -63,12 +63,11 @@ auto echo(const EchoReq &req) -> EchoResp {
 ### 3. Server Setup
 
 ```cpp
+#include <coverbs_rpc/runtime.hpp>
 #include <coverbs_rpc/typed_server.hpp>
-#include <cppcoro/io_service.hpp>
 #include <cppcoro/sync_wait.hpp>
 #include <memory>
 #include <rdmapp/scheduler.h>
-#include <thread>
 
 cppcoro::task<void> run_server(cppcoro::io_service &io_service,
                                std::shared_ptr<rdmapp::scheduler> scheduler,
@@ -83,13 +82,9 @@ cppcoro::task<void> run_server(cppcoro::io_service &io_service,
 }
 
 int main() {
-    cppcoro::io_service io_service;
-    auto scheduler = std::make_shared<rdmapp::basic_scheduler>();
-    std::jthread io_worker([&io_service]() { io_service.process_events(); });
-    std::jthread scheduler_worker([scheduler]() { scheduler->run(); });
-    cppcoro::sync_wait(run_server(io_service, scheduler, 12345));
-    io_service.stop();
-    scheduler->stop();
+    coverbs_rpc::runtime runtime;
+    cppcoro::sync_wait(run_server(runtime.io_service, runtime.scheduler, 12345));
+    runtime.stop();
     return 0;
 }
 ```
@@ -98,6 +93,7 @@ int main() {
 
 ```cpp
 #include "coverbs_rpc/typed_client.hpp"
+#include "coverbs_rpc/runtime.hpp"
 #include <memory>
 #include <rdmapp/scheduler.h>
 
@@ -118,6 +114,7 @@ cppcoro::task<void> run_client(cppcoro::io_service &io_service,
 ## Project Structure
 
 - `include/coverbs_rpc/`: Core header files.
+    - `runtime.hpp`: Owns the TCP `io_service` thread and RDMA scheduler threads.
     - `typed_client.hpp` / `typed_server.hpp`: High-level type-safe RPC API.
     - `basic_client.hpp` / `basic_server.hpp`: Lower-level RPC primitives.
     - `conn/`: RDMA connection management (acceptor, connector).

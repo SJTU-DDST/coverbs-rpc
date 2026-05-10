@@ -2,6 +2,7 @@
 #include "coverbs_rpc/common.hpp"
 #include "coverbs_rpc/conn/acceptor.hpp"
 #include "coverbs_rpc/detail/logger.hpp"
+#include "coverbs_rpc/runtime.hpp"
 #include "coverbs_rpc/server_mux.hpp"
 
 #include <algorithm>
@@ -13,7 +14,6 @@
 #include <thread>
 
 #include "rpc_mux_test.hpp"
-#include "runtime.hpp"
 
 using namespace coverbs_rpc;
 using namespace coverbs_rpc::test;
@@ -68,7 +68,7 @@ auto main(int argc, char *argv[]) -> int {
 
   auto device = std::make_shared<rdmapp::device>(0, 1);
   auto pd = std::make_shared<rdmapp::pd>(device);
-  coverbs_rpc::test::runtime runtime;
+  coverbs_rpc::runtime runtime;
 
   qp_acceptor acceptor(
       runtime.io_service, runtime.scheduler, std::stoi(argv[1]), pd, nullptr,
