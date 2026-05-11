@@ -16,6 +16,9 @@ namespace coverbs_rpc {
 
 class typed_server {
 public:
+  typed_server(cppcoro::io_service &io_service, scheduler_factory scheduler_factory, uint16_t port,
+               TypedRpcConfig config = {});
+
   typed_server(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
                uint16_t port, TypedRpcConfig config = {});
 

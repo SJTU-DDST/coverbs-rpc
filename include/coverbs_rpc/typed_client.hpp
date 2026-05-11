@@ -15,6 +15,9 @@ namespace coverbs_rpc {
 
 class typed_client {
 public:
+  typed_client(cppcoro::io_service &io_service, scheduler_factory scheduler_factory,
+               std::string_view hostname, uint16_t port, TypedRpcConfig config = {});
+
   typed_client(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
                std::string_view hostname, uint16_t port, TypedRpcConfig config = {});
 

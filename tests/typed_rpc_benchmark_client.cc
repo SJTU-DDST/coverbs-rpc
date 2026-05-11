@@ -72,7 +72,8 @@ int main(int argc, char **argv) {
   config.max_resp_payload = 8192;
 
   try {
-    typed_client client(runtime.io_service, runtime.scheduler, server_ip, server_port, config);
+    typed_client client(runtime.io_service, runtime.scheduler_factory(), server_ip, server_port,
+                        config);
 
     get_logger()->info("Starting benchmarks...");
 

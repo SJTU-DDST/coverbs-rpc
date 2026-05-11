@@ -77,11 +77,10 @@ auto base_test(basic_client &client) -> void {
                      total_calls, total_elapsed, total_elapsed / (double)total_calls);
 }
 
-cppcoro::task<void> run_test(cppcoro::io_service &io_service,
-                             std::shared_ptr<rdmapp::scheduler> scheduler,
+cppcoro::task<void> run_test(cppcoro::io_service &io_service, scheduler_factory scheduler_factory,
                              std::shared_ptr<rdmapp::pd> pd) {
   get_logger()->info("Running serial base test...");
-  qp_connector connector(io_service, std::move(scheduler), pd, nullptr,
+  qp_connector connector(io_service, std::move(scheduler_factory), pd, nullptr,
                          ConnConfig{.cq_size = kClientMaxInFlight * 2,
                                     .qp_config{.max_send_wr = kClientMaxInFlight * 2,
                                                .max_recv_wr = kClientMaxInFlight * 2}});
@@ -121,7 +120,7 @@ int main(int argc, char **argv) {
   coverbs_rpc::runtime runtime;
 
   try {
-    cppcoro::sync_wait(run_test(runtime.io_service, runtime.scheduler, pd));
+    cppcoro::sync_wait(run_test(runtime.io_service, runtime.scheduler_factory(), pd));
   } catch (const std::exception &e) {
     get_logger()->error("Exception: {}", e.what());
     runtime.stop();

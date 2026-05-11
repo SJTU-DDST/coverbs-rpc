@@ -70,10 +70,10 @@ auto echo(const EchoReq &req) -> EchoResp {
 #include <rdmapp/scheduler.h>
 
 cppcoro::task<void> run_server(cppcoro::io_service &io_service,
-                               std::shared_ptr<rdmapp::scheduler> scheduler,
+                               coverbs_rpc::scheduler_factory scheduler_factory,
                                uint16_t port) {
     coverbs_rpc::TypedRpcConfig config;
-    coverbs_rpc::typed_server server(io_service, std::move(scheduler), port, config);
+    coverbs_rpc::typed_server server(io_service, std::move(scheduler_factory), port, config);
     
     // Register the handler
     server.register_handler<echo>();
@@ -83,7 +83,7 @@ cppcoro::task<void> run_server(cppcoro::io_service &io_service,
 
 int main() {
     coverbs_rpc::runtime runtime;
-    cppcoro::sync_wait(run_server(runtime.io_service, runtime.scheduler, 12345));
+    cppcoro::sync_wait(run_server(runtime.io_service, runtime.scheduler_factory(), 12345));
     runtime.stop();
     return 0;
 }
@@ -98,9 +98,9 @@ int main() {
 #include <rdmapp/scheduler.h>
 
 cppcoro::task<void> run_client(cppcoro::io_service &io_service,
-                               std::shared_ptr<rdmapp::scheduler> scheduler,
+                               coverbs_rpc::scheduler_factory scheduler_factory,
                                std::string hostname, uint16_t port) {
-    coverbs_rpc::typed_client client(io_service, std::move(scheduler), hostname, port);
+    coverbs_rpc::typed_client client(io_service, std::move(scheduler_factory), hostname, port);
     
     EchoReq req{.msg = "Hello coverbs-rpc!"};
     

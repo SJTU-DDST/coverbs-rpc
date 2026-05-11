@@ -65,11 +65,11 @@ int main(int argc, char *argv[]) {
   coverbs_rpc::runtime runtime;
 
   if (argc == 2) {
-    coverbs_rpc::qp_acceptor acceptor(runtime.io_service, runtime.scheduler, std::stoi(argv[1]),
-                                      pd);
+    coverbs_rpc::qp_acceptor acceptor(runtime.io_service, runtime.scheduler_factory(),
+                                      std::stoi(argv[1]), pd);
     cppcoro::sync_wait(server(acceptor));
   } else if (argc == 3) {
-    coverbs_rpc::qp_connector connector(runtime.io_service, runtime.scheduler, pd);
+    coverbs_rpc::qp_connector connector(runtime.io_service, runtime.scheduler_factory(), pd);
     cppcoro::sync_wait(client(connector, argv[1], std::stoi(argv[2])));
   } else {
     coverbs_rpc::get_logger()->info(

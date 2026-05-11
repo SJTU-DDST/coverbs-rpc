@@ -2,9 +2,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <rdmapp/qp.h>
+#include <rdmapp/scheduler.h>
 
 namespace coverbs_rpc {
+
+using scheduler_factory = std::function<std::shared_ptr<rdmapp::scheduler>()>;
 
 struct ConnConfig {
   uint32_t cq_size = 256;

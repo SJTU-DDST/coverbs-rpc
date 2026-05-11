@@ -19,23 +19,47 @@ static auto require_scheduler(std::shared_ptr<rdmapp::scheduler> scheduler)
   return scheduler;
 }
 
-qp_connector::qp_connector(cppcoro::io_service &io_service,
-                           std::shared_ptr<rdmapp::scheduler> scheduler, std::shared_ptr<pd> pd,
-                           std::shared_ptr<srq> srq, ConnConfig config)
+static auto require_scheduler_factory(scheduler_factory factory) -> scheduler_factory {
+  if (!factory) {
+    throw std::invalid_argument("qp_connector: scheduler factory must not be empty");
+  }
+  return factory;
+}
+
+static auto fixed_scheduler_factory(std::shared_ptr<rdmapp::scheduler> scheduler)
+    -> scheduler_factory {
+  scheduler = require_scheduler(std::move(scheduler));
+  return [scheduler]() { return scheduler; };
+}
+
+qp_connector::qp_connector(cppcoro::io_service &io_service, scheduler_factory scheduler_factory,
+                           std::shared_ptr<pd> pd, std::shared_ptr<srq> srq, ConnConfig config)
     : pd_(pd)
     , srq_(srq)
-    , cq_provider_(pd_->device_ptr(), require_scheduler(std::move(scheduler)))
+    , scheduler_factory_(require_scheduler_factory(std::move(scheduler_factory)))
+    , cq_provider_(pd_->device_ptr())
     , io_service_(io_service)
     , config_(std::move(config)) {}
 
-auto qp_connector::alloc_cq() noexcept -> std::shared_ptr<cq> {
-  return cq_provider_.alloc(config_.cq_size);
+qp_connector::qp_connector(cppcoro::io_service &io_service,
+                           std::shared_ptr<rdmapp::scheduler> scheduler, std::shared_ptr<pd> pd,
+                           std::shared_ptr<srq> srq, ConnConfig config)
+    : qp_connector(io_service, fixed_scheduler_factory(std::move(scheduler)), std::move(pd),
+                   std::move(srq), std::move(config)) {}
+
+auto qp_connector::make_scheduler() -> std::shared_ptr<rdmapp::scheduler> {
+  return require_scheduler(scheduler_factory_());
+}
+
+auto qp_connector::alloc_cq(std::shared_ptr<rdmapp::scheduler> scheduler) -> std::shared_ptr<cq> {
+  return cq_provider_.alloc(config_.cq_size, require_scheduler(std::move(scheduler)));
 }
 
 auto qp_connector::from_socket(cppcoro::net::socket &socket, std::span<std::byte const> userdata)
     -> cppcoro::task<std::shared_ptr<qp_t>> {
-  auto cq1 = alloc_cq();
-  auto cq2 = alloc_cq();
+  auto scheduler = make_scheduler();
+  auto cq1 = alloc_cq(scheduler);
+  auto cq2 = alloc_cq(scheduler);
   auto qp_ptr = std::make_shared<qp_t>(this->pd_, cq1, cq2, srq_, config_.qp_config);
   qp_ptr->user_data().assign(userdata.begin(), userdata.end());
   co_await send_qp(*qp_ptr, socket);

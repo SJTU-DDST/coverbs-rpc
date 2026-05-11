@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
   config.max_req_payload = 8192;
   config.max_resp_payload = 8192;
 
-  typed_server server(runtime.io_service, runtime.scheduler, port, config);
+  typed_server server(runtime.io_service, runtime.scheduler_factory(), port, config);
   server.register_handler<benchmark::BenchmarkHandler<0>::handle>();
   server.register_handler<benchmark::BenchmarkHandler<1>::handle>();
 

@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
   coverbs_rpc::runtime runtime;
 
-  typed_server server(runtime.io_service, runtime.scheduler, port, kServerRpcConfig);
+  typed_server server(runtime.io_service, runtime.scheduler_factory(), port, kServerRpcConfig);
   register_handlers(server, std::make_index_sequence<kNumHandlers>{});
 
   get_logger()->info("Typed RPC Mux Server listening on port {}", port);

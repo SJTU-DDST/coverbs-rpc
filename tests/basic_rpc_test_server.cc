@@ -68,7 +68,7 @@ auto main(int argc, char *argv[]) -> int {
   coverbs_rpc::runtime runtime;
 
   qp_acceptor acceptor(
-      runtime.io_service, runtime.scheduler, std::stoi(argv[1]), pd, nullptr,
+      runtime.io_service, runtime.scheduler_factory(), std::stoi(argv[1]), pd, nullptr,
       ConnConfig{.qp_config{.max_send_wr = kServerMaxInFlight, .max_recv_wr = kServerMaxInFlight}});
   get_logger()->info("Server: listening on port {}", argv[1]);
   cppcoro::sync_wait(server_loop(acceptor));

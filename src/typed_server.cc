@@ -7,15 +7,21 @@ namespace coverbs_rpc {
 
 using detail::get_logger;
 
-typed_server::typed_server(cppcoro::io_service &io_service,
-                           std::shared_ptr<rdmapp::scheduler> scheduler, uint16_t port,
-                           TypedRpcConfig config)
+typed_server::typed_server(cppcoro::io_service &io_service, scheduler_factory scheduler_factory,
+                           uint16_t port, TypedRpcConfig config)
     : config_(config)
     , device_(std::make_shared<rdmapp::device>(config.device_nr, config.port_nr))
     , pd_(std::make_shared<rdmapp::pd>(device_))
     , io_service_(io_service)
-    , acceptor_(io_service_, std::move(scheduler), port, pd_, nullptr, config.to_conn_config())
+    , acceptor_(io_service_, std::move(scheduler_factory), port, pd_, nullptr,
+                config.to_conn_config())
     , mux_() {}
+
+typed_server::typed_server(cppcoro::io_service &io_service,
+                           std::shared_ptr<rdmapp::scheduler> scheduler, uint16_t port,
+                           TypedRpcConfig config)
+    : typed_server(
+          io_service, [scheduler = std::move(scheduler)]() { return scheduler; }, port, config) {}
 
 auto typed_server::run() -> cppcoro::task<void> {
   cppcoro::async_scope scope;

@@ -24,9 +24,11 @@ struct qp_connector {
   using srq = rdmapp::srq;
   using qp_t = rdmapp::basic_qp;
 
+  qp_connector(cppcoro::io_service &io_service, scheduler_factory scheduler_factory,
+               std::shared_ptr<pd> pd, std::shared_ptr<srq> srq = nullptr, ConnConfig config = {});
+
   qp_connector(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
-               std::shared_ptr<pd> pd, std::shared_ptr<srq> srq = nullptr,
-               ConnConfig config = {});
+               std::shared_ptr<pd> pd, std::shared_ptr<srq> srq = nullptr, ConnConfig config = {});
 
   auto connect(std::string_view hostname, uint16_t port, std::span<const std::byte> userdata = {})
       -> cppcoro::task<std::shared_ptr<qp_t>>;
@@ -38,10 +40,12 @@ private:
   auto from_socket(cppcoro::net::socket &socket, std::span<std::byte const> userdata)
       -> cppcoro::task<std::shared_ptr<qp_t>>;
 
-  auto alloc_cq() noexcept -> std::shared_ptr<cq>;
+  auto make_scheduler() -> std::shared_ptr<rdmapp::scheduler>;
+  auto alloc_cq(std::shared_ptr<rdmapp::scheduler> scheduler) -> std::shared_ptr<cq>;
 
   std::shared_ptr<pd> pd_;
   std::shared_ptr<srq> srq_;
+  scheduler_factory scheduler_factory_;
   detail::cq_provider cq_provider_;
   cppcoro::io_service &io_service_;
   ConnConfig const config_;

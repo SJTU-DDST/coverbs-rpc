@@ -84,10 +84,10 @@ auto run_all_tests(typed_client &client, std::index_sequence<Is...>) -> void {
   (base_test<Is>(client), ...);
 }
 
-cppcoro::task<void> run_test(cppcoro::io_service &io_service,
-                             std::shared_ptr<rdmapp::scheduler> scheduler) {
+cppcoro::task<void> run_test(cppcoro::io_service &io_service, scheduler_factory scheduler_factory) {
   get_logger()->info("Connecting to {}:{}", server_ip, server_port);
-  typed_client client(io_service, std::move(scheduler), server_ip, server_port, kClientRpcConfig);
+  typed_client client(io_service, std::move(scheduler_factory), server_ip, server_port,
+                      kClientRpcConfig);
 
   get_logger()->info("Running serial tests...");
   run_all_tests(client, std::make_index_sequence<kNumHandlers>{});
@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
   coverbs_rpc::runtime runtime;
 
   try {
-    cppcoro::sync_wait(run_test(runtime.io_service, runtime.scheduler));
+    cppcoro::sync_wait(run_test(runtime.io_service, runtime.scheduler_factory()));
   } catch (const std::exception &e) {
     get_logger()->error("Exception: {}", e.what());
     runtime.stop();

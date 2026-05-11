@@ -26,6 +26,9 @@ struct qp_acceptor {
   using srq = rdmapp::srq;
   using qp_t = rdmapp::basic_qp;
 
+  qp_acceptor(cppcoro::io_service &io_service, scheduler_factory scheduler_factory, uint16_t port,
+              std::shared_ptr<pd> pd, std::shared_ptr<srq> srq = nullptr, ConnConfig config = {});
+
   qp_acceptor(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
               uint16_t port, std::shared_ptr<pd> pd, std::shared_ptr<srq> srq = nullptr,
               ConnConfig config = {});
@@ -43,11 +46,13 @@ private:
   auto accept_qp(cppcoro::net::socket &socket, std::shared_ptr<rdmapp::cq> send_cq,
                  std::shared_ptr<rdmapp::cq> recv_cq) -> cppcoro::task<std::shared_ptr<qp_t>>;
 
-  auto alloc_cq() -> std::shared_ptr<rdmapp::cq>;
+  auto make_scheduler() -> std::shared_ptr<rdmapp::scheduler>;
+  auto alloc_cq(std::shared_ptr<rdmapp::scheduler> scheduler) -> std::shared_ptr<rdmapp::cq>;
 
   cppcoro::net::socket acceptor_socket_;
   std::shared_ptr<pd> pd_;
   std::shared_ptr<srq> srq_;
+  scheduler_factory scheduler_factory_;
   detail::cq_provider cq_provider_;
   uint16_t const port_;
   cppcoro::io_service &io_service_;
