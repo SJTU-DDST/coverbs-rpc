@@ -23,8 +23,10 @@ struct RpcConfig {
 
   auto to_conn_config() const noexcept -> ConnConfig {
     ConnConfig cfg;
-    cfg.qp_config.max_send_wr = max_inflight + 64;
-    cfg.qp_config.max_recv_wr = max_inflight + 64;
+    auto const wr_depth = static_cast<uint32_t>(max_inflight + 64);
+    cfg.cq_size = wr_depth * 2;
+    cfg.qp_config.max_send_wr = wr_depth;
+    cfg.qp_config.max_recv_wr = wr_depth;
     return cfg;
   }
 };
