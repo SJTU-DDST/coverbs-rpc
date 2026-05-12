@@ -9,7 +9,6 @@
 #include <glaze/glaze.hpp>
 #include <memory>
 #include <stdexcept>
-#include <vector>
 
 namespace coverbs_rpc {
 
@@ -28,19 +27,17 @@ public:
     static_assert(std::same_as<Req, std::decay_t<decltype(req)>>);
     constexpr uint32_t fn_id = detail::function_id<Handler>;
 
-    std::vector<std::byte> send_buffer(config_.max_req_payload);
-    auto ec = glz::write_beve_untagged(req, send_buffer);
+    auto op = client_->prepare_call();
+    auto req_buffer = op.request_buffer();
+    auto ec = glz::write_beve_untagged(req, req_buffer);
     if (ec) [[unlikely]] {
       throw std::runtime_error("typed_client: failed to serialize request");
     }
-    std::size_t req_size = ec.count;
 
-    std::vector<std::byte> recv_buffer(config_.max_resp_payload);
-    std::size_t resp_size =
-        co_await client_->call(fn_id, std::span{send_buffer.data(), req_size}, recv_buffer);
+    auto resp_buffer = co_await op.call(fn_id, ec.count);
 
     Resp resp{};
-    auto err = glz::read_beve_untagged(resp, std::span{recv_buffer.data(), resp_size});
+    auto err = glz::read_beve_untagged(resp, resp_buffer);
     if (err) [[unlikely]] {
       throw std::runtime_error("typed_client: failed to deserialize response");
     }

@@ -4,6 +4,7 @@
 #include "coverbs_rpc/detail/logger.hpp"
 #include "coverbs_rpc/runtime.hpp"
 
+#include <algorithm>
 #include <cppcoro/io_service.hpp>
 #include <cppcoro/sync_wait.hpp>
 #include <cppcoro/task.hpp>
@@ -27,18 +28,20 @@ constexpr int kReportInterval = 10000;
 } // namespace
 
 cppcoro::task<void> run_rpc_test(basic_client &client, int num_calls) {
-  std::vector<std::byte> req_data(kRequestSize, kRequestByte);
-  std::vector<std::byte> resp_data(kResponseSize);
-
   for (int i = 0; i < num_calls; ++i) {
-    auto resp_len = co_await client.call(kTestFnId, req_data, resp_data);
+    auto op = client.prepare_call();
+    auto req_buffer = op.request_buffer();
+    std::fill_n(req_buffer.data(), kRequestSize, kRequestByte);
 
-    if (resp_len != kResponseSize) {
-      get_logger()->error("Response length mismatch: expected {}, got {}", kResponseSize, resp_len);
+    auto resp = co_await op.call(kTestFnId, kRequestSize);
+
+    if (resp.size() != kResponseSize) {
+      get_logger()->error("Response length mismatch: expected {}, got {}", kResponseSize,
+                          resp.size());
       exit(1);
     }
 
-    for (auto b : resp_data) {
+    for (auto b : resp) {
       if (b != kResponseByte) {
         get_logger()->error("Response data mismatch");
         exit(1);

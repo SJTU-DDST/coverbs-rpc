@@ -7,7 +7,9 @@
 #include <format>
 #include <memory>
 #include <rdmapp/qp.h>
+#include <stdexcept>
 #include <thread>
+#include <utility>
 
 namespace coverbs_rpc {
 using detail::get_logger;
@@ -18,7 +20,7 @@ constexpr uintptr_t kWaiterReady = 1;
 
 struct RpcSlot {
   std::atomic<uintptr_t> waiter{kWaiterEmpty};
-  std::span<std::byte> user_resp_buffer{};
+  std::byte *response_payload{};
   std::size_t actual_len{};
   uint64_t expected_req_id{};
 };
@@ -102,11 +104,16 @@ struct basic_client::Impl {
         }
 
         std::size_t payload_len = header->payload_len;
-        std::size_t copy_len = std::min((std::size_t)payload_len, slot.user_resp_buffer.size());
+        std::size_t available_payload = nbytes - sizeof(detail::RpcHeader);
+        if (payload_len > available_payload || payload_len > config_.max_resp_payload)
+            [[unlikely]] {
+          get_logger()->error("Client: invalid response payload size: payload_len={} nbytes={}",
+                              payload_len, nbytes);
+          std::terminate();
+        }
 
-        std::copy_n(buffer_ptr + sizeof(detail::RpcHeader), copy_len, slot.user_resp_buffer.data());
-
-        slot.actual_len = copy_len;
+        slot.actual_len = payload_len;
+        slot.response_payload = buffer_ptr + sizeof(detail::RpcHeader);
 
         // A response may beat waiter registration once send/recv completions
         // are funneled through the same scheduler thread.
@@ -146,48 +153,98 @@ basic_client::basic_client(std::shared_ptr<rdmapp::qp> qp, RpcConfig config)
 
 basic_client::~basic_client() = default;
 
-auto basic_client::call(uint32_t fn_id, std::span<const std::byte> req_data,
-                        std::span<std::byte> resp_buffer) -> cppcoro::task<std::size_t> {
-  if (req_data.size() > impl_->config_.max_req_payload) [[unlikely]] {
+basic_client::call_operation::call_operation(Impl *impl, uint32_t slot_idx) noexcept
+    : impl_(impl)
+    , slot_idx_(slot_idx) {}
+
+basic_client::call_operation::call_operation(call_operation &&other) noexcept
+    : impl_(std::exchange(other.impl_, nullptr))
+    , slot_idx_(std::exchange(other.slot_idx_, 0))
+    , started_(std::exchange(other.started_, false))
+    , waiting_response_(std::exchange(other.waiting_response_, false))
+    , completed_(std::exchange(other.completed_, false)) {}
+
+auto basic_client::call_operation::operator=(call_operation &&other) noexcept -> call_operation & {
+  if (this != &other) {
+    release();
+    impl_ = std::exchange(other.impl_, nullptr);
+    slot_idx_ = std::exchange(other.slot_idx_, 0);
+    started_ = std::exchange(other.started_, false);
+    waiting_response_ = std::exchange(other.waiting_response_, false);
+    completed_ = std::exchange(other.completed_, false);
+  }
+  return *this;
+}
+
+basic_client::call_operation::~call_operation() { release(); }
+
+auto basic_client::call_operation::request_buffer() noexcept -> std::span<std::byte> {
+  std::size_t offset = slot_idx_ * impl_->send_buffer_size_ + sizeof(detail::RpcHeader);
+  return {impl_->send_buffer_pool_.data() + offset, impl_->config_.max_req_payload};
+}
+
+auto basic_client::call_operation::call(uint32_t fn_id, std::size_t req_size)
+    -> cppcoro::task<std::span<std::byte>> {
+  if (!impl_) [[unlikely]] {
+    throw std::logic_error("basic_client::call_operation is empty");
+  }
+  if (started_) [[unlikely]] {
+    throw std::logic_error("basic_client::call_operation can only be submitted once");
+  }
+  if (req_size > impl_->config_.max_req_payload) [[unlikely]] {
     throw std::runtime_error(std::format("request payload too large: max={} req={}",
-                                         impl_->config_.max_req_payload, req_data.size()));
+                                         impl_->config_.max_req_payload, req_size));
+  }
+  started_ = true;
+
+  uint64_t seq = impl_->global_seq_.fetch_add(1);
+  uint64_t req_id = detail::make_req_id(seq, slot_idx_);
+
+  detail::RpcSlot &slot = impl_->slots_[slot_idx_];
+  slot.waiter.store(detail::kWaiterEmpty);
+  slot.response_payload = nullptr;
+  slot.actual_len = 0;
+  slot.expected_req_id = req_id;
+
+  std::size_t send_offset = slot_idx_ * impl_->send_buffer_size_;
+  auto send_slice_mr =
+      rdmapp::mr_view(impl_->send_mr_, send_offset, sizeof(detail::RpcHeader) + req_size);
+
+  detail::RpcHeader *header = reinterpret_cast<detail::RpcHeader *>(send_slice_mr.span().data());
+  header->req_id = req_id;
+  header->payload_len = static_cast<uint32_t>(req_size);
+  header->fn_id = fn_id;
+
+  try {
+    co_await impl_->qp_->send(send_slice_mr, rdmapp::use_native_awaitable);
+    waiting_response_ = true;
+    co_await detail::RpcResponseAwaitable{slot};
+    waiting_response_ = false;
+  } catch (...) {
+    release();
+    throw;
   }
 
+  completed_ = true;
+  co_return std::span{slot.response_payload, slot.actual_len};
+}
+
+auto basic_client::call_operation::release() noexcept -> void {
+  if (!impl_) {
+    return;
+  }
+  if (!waiting_response_ || completed_) {
+    impl_->free_slots_.enqueue(slot_idx_);
+  }
+  impl_ = nullptr;
+}
+
+auto basic_client::prepare_call() -> call_operation {
   uint32_t slot_idx;
   while (!impl_->free_slots_.try_dequeue(slot_idx)) {
     detail::pause();
   }
-
-  uint64_t seq = impl_->global_seq_.fetch_add(1);
-  uint64_t req_id = detail::make_req_id(seq, slot_idx);
-
-  detail::RpcSlot &slot = impl_->slots_[slot_idx];
-  slot.waiter.store(detail::kWaiterEmpty);
-  slot.user_resp_buffer = resp_buffer;
-  slot.expected_req_id = req_id;
-
-  std::size_t send_offset = slot_idx * impl_->send_buffer_size_;
-  auto send_slice_mr =
-      rdmapp::mr_view(impl_->send_mr_, send_offset, sizeof(detail::RpcHeader) + req_data.size());
-
-  detail::RpcHeader *header = reinterpret_cast<detail::RpcHeader *>(send_slice_mr.span().data());
-  header->req_id = req_id;
-  header->payload_len = static_cast<uint32_t>(req_data.size());
-  header->fn_id = fn_id;
-
-  std::copy_n(req_data.data(), req_data.size(),
-              send_slice_mr.span().data() + sizeof(detail::RpcHeader));
-
-  std::size_t nbytes = 0;
-  try {
-    co_await impl_->qp_->send(send_slice_mr, rdmapp::use_native_awaitable);
-    nbytes = co_await detail::RpcResponseAwaitable{slot};
-  } catch (const std::exception &e) {
-    get_logger()->error("Client: RPC failed: {}", e.what());
-  }
-
-  impl_->free_slots_.enqueue(slot_idx);
-  co_return nbytes;
+  return call_operation(impl_.get(), slot_idx);
 }
 
 } // namespace coverbs_rpc

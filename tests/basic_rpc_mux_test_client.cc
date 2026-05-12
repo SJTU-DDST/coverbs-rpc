@@ -37,20 +37,23 @@ auto base_test(basic_client &client) -> void {
 
   for (uint32_t i = 0; i < kNumHandlers; ++i) {
     std::vector<std::byte> req_data(kRequestSize, get_request_byte(i));
-    std::vector<std::byte> resp_data(kResponseSize);
     auto expected_resp_byte = get_response_byte(i);
 
     for (std::size_t j = 0; j < kNumCallsPerHandler; ++j) {
-      auto resp_len = cppcoro::sync_wait(client.call(i, req_data, resp_data));
+      auto op = client.prepare_call();
+      auto req_buffer = op.request_buffer();
+      std::copy_n(req_data.data(), req_data.size(), req_buffer.data());
 
-      if (resp_len != kResponseSize) {
+      auto resp = cppcoro::sync_wait(op.call(i, req_data.size()));
+
+      if (resp.size() != kResponseSize) {
         get_logger()->error("Response length mismatch at handler {}, call {}: "
                             "expected {}, got {}",
-                            i, j, kResponseSize, resp_len);
+                            i, j, kResponseSize, resp.size());
         std::terminate();
       }
 
-      for (auto b : resp_data) {
+      for (auto b : resp) {
         if (b != expected_resp_byte) {
           get_logger()->error("Response data mismatch at handler {}, call {}", i, j);
           std::terminate();
