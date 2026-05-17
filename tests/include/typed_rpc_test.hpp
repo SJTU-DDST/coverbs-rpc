@@ -26,8 +26,8 @@ struct TypedResponse {
 constexpr std::size_t kNumHandlers = 10;
 constexpr std::size_t kNumCallsPerHandler = 1000;
 constexpr std::uint32_t kServerMaxInFlight = 512;
-inline const TypedRpcConfig kServerRpcConfig = [] {
-  TypedRpcConfig cfg;
+inline const RpcConfig kServerRpcConfig = [] {
+  RpcConfig cfg;
   cfg.max_inflight = kServerMaxInFlight;
   cfg.max_req_payload = 1024 * 1024;
   cfg.max_resp_payload = 1024 * 1024;
@@ -35,8 +35,8 @@ inline const TypedRpcConfig kServerRpcConfig = [] {
 }();
 
 constexpr std::uint32_t kClientMaxInFlight = 128;
-inline const TypedRpcConfig kClientRpcConfig = [] {
-  TypedRpcConfig cfg;
+inline const RpcConfig kClientRpcConfig = [] {
+  RpcConfig cfg;
   cfg.max_inflight = kClientMaxInFlight;
   cfg.max_req_payload = 1024 * 1024;
   cfg.max_resp_payload = 1024 * 1024;

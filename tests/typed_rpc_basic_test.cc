@@ -23,7 +23,7 @@ auto echo(const EchoReq &req) -> EchoResp { return EchoResp{.msg = "Echo: " + re
 
 cppcoro::task<void> run_server(cppcoro::io_service &io_service, uint16_t port,
                                coverbs_rpc::scheduler_factory scheduler_factory,
-                               coverbs_rpc::TypedRpcConfig config) {
+                               coverbs_rpc::RpcConfig config) {
   coverbs_rpc::typed_server server(io_service, std::move(scheduler_factory), port, config);
   server.register_handler<echo>();
   co_await server.run();
@@ -31,7 +31,7 @@ cppcoro::task<void> run_server(cppcoro::io_service &io_service, uint16_t port,
 
 cppcoro::task<void> run_client(cppcoro::io_service &io_service, std::string hostname, uint16_t port,
                                coverbs_rpc::scheduler_factory scheduler_factory,
-                               coverbs_rpc::TypedRpcConfig config) {
+                               coverbs_rpc::RpcConfig config) {
   coverbs_rpc::typed_client client(io_service, std::move(scheduler_factory), hostname, port,
                                    config);
 
@@ -48,7 +48,7 @@ cppcoro::task<void> run_client(cppcoro::io_service &io_service, std::string host
 }
 
 auto main(int argc, char *argv[]) -> int {
-  coverbs_rpc::TypedRpcConfig config;
+  coverbs_rpc::RpcConfig config;
   config.max_req_payload = 1024;
   config.max_resp_payload = 1024;
 

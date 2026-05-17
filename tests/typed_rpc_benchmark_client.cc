@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
 
   coverbs_rpc::runtime runtime;
 
-  TypedRpcConfig config;
+  RpcConfig config;
   config.max_inflight = 512;
   config.max_req_payload = 8192;
   config.max_resp_payload = 8192;

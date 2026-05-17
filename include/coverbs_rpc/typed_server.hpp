@@ -17,10 +17,16 @@ namespace coverbs_rpc {
 class typed_server {
 public:
   typed_server(cppcoro::io_service &io_service, scheduler_factory scheduler_factory, uint16_t port,
-               TypedRpcConfig config = {});
+               RpcConfig config = {});
+
+  typed_server(cppcoro::io_service &io_service, scheduler_factory scheduler_factory, uint16_t port,
+               RpcConfig config, ConnConfig conn_config);
 
   typed_server(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
-               uint16_t port, TypedRpcConfig config = {});
+               uint16_t port, RpcConfig config = {});
+
+  typed_server(cppcoro::io_service &io_service, std::shared_ptr<rdmapp::scheduler> scheduler,
+               uint16_t port, RpcConfig config, ConnConfig conn_config);
 
   template <auto Handler>
   auto register_handler() -> void {
@@ -81,7 +87,7 @@ private:
 
   auto handle_connection(std::shared_ptr<rdmapp::qp> qp) -> cppcoro::task<void>;
 
-  TypedRpcConfig const config_;
+  RpcConfig const config_;
   std::shared_ptr<rdmapp::device> device_;
   std::shared_ptr<rdmapp::pd> pd_;
   cppcoro::io_service &io_service_;
