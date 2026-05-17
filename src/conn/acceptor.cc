@@ -85,6 +85,7 @@ auto qp_acceptor::accept_qp(cppcoro::net::socket &socket, std::shared_ptr<rdmapp
 auto qp_acceptor::accept() -> cppcoro::task<std::shared_ptr<qp_t>> {
   cppcoro::net::socket socket = cppcoro::net::socket::create_tcpv4(io_service_);
   co_await acceptor_socket_.accept(socket);
+  get_logger()->info("qp_acceptor: accepted connection from {}", socket.remote_endpoint().to_string());
   auto scheduler = make_scheduler();
   co_return co_await accept_qp(socket, alloc_cq(scheduler), alloc_cq(scheduler));
 }

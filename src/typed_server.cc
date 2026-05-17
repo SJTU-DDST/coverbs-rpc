@@ -27,7 +27,7 @@ auto typed_server::run() -> cppcoro::task<void> {
   cppcoro::async_scope scope;
   while (true) {
     auto qp = co_await acceptor_.accept();
-    get_logger()->info("typed_server: accepted connection");
+    get_logger()->debug("typed_server: accepted connection");
     scope.spawn(handle_connection(std::move(qp)));
   }
   co_await scope.join();

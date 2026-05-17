@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdio>
 #include <format>
+#include <print>
 
 #include "coverbs_rpc/log.hpp"
 
@@ -47,9 +48,8 @@ private:
   void log(log_level level, const char *level_str, std::format_string<Args...> fmt,
            Args &&...args) {
     if (level >= level_.load(std::memory_order_relaxed)) {
-      std::string s = std::format("[coverbs_rpc] [{}] {}\n", level_str,
-                                  std::format(fmt, std::forward<Args>(args)...));
-      std::printf("%s", s.c_str());
+      std::println(stderr, "[coverbs_rpc] [{}] {}", level_str,
+                   std::format(fmt, std::forward<Args>(args)...));
     }
   }
 

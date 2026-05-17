@@ -18,7 +18,8 @@ basic_server::basic_server(std::shared_ptr<rdmapp::qp> qp, const basic_mux &mux,
     , recv_mr_(qp->pd_ptr()->reg_mr(recv_buffer_pool_.data(), recv_buffer_pool_.size()))
     , send_buffer_pool_(config_.max_inflight * send_buffer_size_)
     , send_mr_(qp->pd_ptr()->reg_mr(send_buffer_pool_.data(), send_buffer_pool_.size())) {
-  get_logger()->info("Server initialized with {} slots", config_.max_inflight);
+  get_logger()->debug("Server initialized with {} slots", config_.max_inflight);
+  get_logger()->info("Server initialized with {} handlers", mux_.handler_count());
 }
 
 auto basic_server::run() -> cppcoro::task<void> {

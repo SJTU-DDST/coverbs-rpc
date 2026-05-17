@@ -18,6 +18,8 @@ public:
   auto dispatch(uint32_t fn_id, std::span<std::byte> payload, std::span<std::byte> resp) const
       -> std::size_t;
 
+  auto handler_count() const noexcept -> std::size_t;
+
 private:
   std::map<uint32_t, Handler> handlers_;
 };

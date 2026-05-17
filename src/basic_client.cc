@@ -59,8 +59,8 @@ struct basic_client::Impl {
       free_slots_.enqueue(i);
     }
 
-    get_logger()->info("Client initialized with {} slots, send_buf={}, recv_buf={}",
-                       config_.max_inflight, send_buffer_size_, recv_buffer_size_);
+    get_logger()->debug("Client initialized with {} slots, send_buf={}, recv_buf={}",
+                        config_.max_inflight, send_buffer_size_, recv_buffer_size_);
   }
 
   void run_recv_workers() {
