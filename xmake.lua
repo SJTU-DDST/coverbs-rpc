@@ -6,7 +6,7 @@ set_languages("c++23", { public = true })
 set_warnings("all", "extra", "pedantic", "error", {private=true})
 
 add_repositories("ddst-xrepo https://github.com/SJTU-DDST/xmake-repo.git")
-add_requires("rdmapp dev", {
+add_requires("rdmapp 0.1.0", {
     public=true,
     configs={examples=false, nortti=false, enable_pic=true}
 })
