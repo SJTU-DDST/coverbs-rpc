@@ -12,7 +12,15 @@ namespace coverbs_rpc::utils {
 
 namespace detail {
 
-inline void cpu_relax() noexcept { __builtin_ia32_pause(); }
+inline void cpu_relax() noexcept {
+#if defined(__i386__) || defined(__x86_64__)
+  __builtin_ia32_pause();
+#elif defined(__aarch64__) || defined(__arm__)
+  __asm__ __volatile__("yield" ::: "memory");
+#else
+  std::atomic_signal_fence(std::memory_order_seq_cst);
+#endif
+}
 
 struct SpinEvent {
   std::atomic<bool> ready_{false};

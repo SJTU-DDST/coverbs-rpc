@@ -38,7 +38,15 @@ struct RpcResponseAwaitable {
   auto await_resume() noexcept -> std::size_t { return slot.actual_len; }
 };
 
-static auto pause() noexcept -> void { __builtin_ia32_pause(); }
+static auto pause() noexcept -> void {
+#if defined(__i386__) || defined(__x86_64__)
+  __builtin_ia32_pause();
+#elif defined(__aarch64__) || defined(__arm__)
+  __asm__ __volatile__("yield" ::: "memory");
+#else
+  std::atomic_signal_fence(std::memory_order_seq_cst);
+#endif
+}
 
 } // namespace detail
 
