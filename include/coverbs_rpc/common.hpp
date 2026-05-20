@@ -12,14 +12,14 @@ namespace coverbs_rpc {
 using scheduler_factory = std::function<std::shared_ptr<rdmapp::scheduler>()>;
 
 struct ConnConfig {
-  uint32_t device_nr = 0;
+  std::string device_name = "auto";
   uint32_t port_nr = 1;
   uint32_t cq_size = 256;
   rdmapp::qp_config qp_config = rdmapp::default_qp_config();
 };
 
 struct RpcConfig {
-  uint32_t rdma_device_nr = 0;
+  std::string rdma_device_name = "auto";
   uint32_t rdma_port_nr = 1;
   std::size_t max_inflight = 128;
   std::size_t max_req_payload = 256;
@@ -31,7 +31,7 @@ struct RpcConfig {
     cfg.cq_size = wr_depth * 2;
     cfg.qp_config.max_send_wr = wr_depth;
     cfg.qp_config.max_recv_wr = wr_depth;
-    cfg.device_nr = rdma_device_nr;
+    cfg.device_name = rdma_device_name;
     cfg.port_nr = rdma_port_nr;
     return cfg;
   }

@@ -13,7 +13,6 @@
 #include <memory>
 #include <rdmapp/completion_token.h>
 #include <string>
-#include <thread>
 
 namespace coverbs_rpc {
 using detail::get_logger;
@@ -60,7 +59,7 @@ cppcoro::task<void> client(coverbs_rpc::qp_connector &connector, std::string hos
 }
 
 int main(int argc, char *argv[]) {
-  auto device = std::make_shared<rdmapp::device>(0, 1);
+  auto device = std::make_shared<rdmapp::device>(rdmapp::auto_select);
   auto pd = std::make_shared<rdmapp::pd>(device);
   coverbs_rpc::runtime runtime;
 

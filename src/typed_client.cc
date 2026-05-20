@@ -16,7 +16,9 @@ typed_client::typed_client(cppcoro::io_service &io_service, scheduler_factory sc
                            std::string_view hostname, uint16_t port, RpcConfig config,
                            ConnConfig conn_config)
     : config_(config)
-    , device_(std::make_shared<rdmapp::device>(conn_config.device_nr, conn_config.port_nr))
+    , device_(conn_config.device_name == "auto"
+                  ? std::make_shared<rdmapp::device>(rdmapp::auto_select)
+                  : std::make_shared<rdmapp::device>(conn_config.device_name, conn_config.port_nr))
     , pd_(std::make_shared<rdmapp::pd>(device_))
     , io_service_(io_service)
     , connector_(io_service_, std::move(scheduler_factory), pd_, nullptr, conn_config) {

@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
 
   get_logger()->info("Connecting to {}:{}", server_ip, server_port);
 
-  auto device = std::make_shared<rdmapp::device>(0, 1);
+  auto device = std::make_shared<rdmapp::device>(rdmapp::auto_select);
   auto pd = std::make_shared<rdmapp::pd>(device);
   coverbs_rpc::runtime runtime;
 

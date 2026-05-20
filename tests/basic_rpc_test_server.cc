@@ -63,7 +63,7 @@ auto main(int argc, char *argv[]) -> int {
     return 1;
   }
 
-  auto device = std::make_shared<rdmapp::device>(0, 1);
+  auto device = std::make_shared<rdmapp::device>(rdmapp::auto_select);
   auto pd = std::make_shared<rdmapp::pd>(device);
   coverbs_rpc::runtime runtime;
 

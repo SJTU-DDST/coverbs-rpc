@@ -9,12 +9,15 @@ using detail::get_logger;
 
 typed_server::typed_server(cppcoro::io_service &io_service, scheduler_factory scheduler_factory,
                            uint16_t port, RpcConfig config)
-    : typed_server(io_service, std::move(scheduler_factory), port, config, config.to_conn_config()) {}
+    : typed_server(io_service, std::move(scheduler_factory), port, config,
+                   config.to_conn_config()) {}
 
 typed_server::typed_server(cppcoro::io_service &io_service, scheduler_factory scheduler_factory,
                            uint16_t port, RpcConfig config, ConnConfig conn_config)
     : config_(config)
-    , device_(std::make_shared<rdmapp::device>(conn_config.device_nr, conn_config.port_nr))
+    , device_(conn_config.device_name == "auto"
+                  ? std::make_shared<rdmapp::device>(rdmapp::auto_select)
+                  : std::make_shared<rdmapp::device>(conn_config.device_name, conn_config.port_nr))
     , pd_(std::make_shared<rdmapp::pd>(device_))
     , io_service_(io_service)
     , acceptor_(io_service_, std::move(scheduler_factory), port, pd_, nullptr, conn_config)
